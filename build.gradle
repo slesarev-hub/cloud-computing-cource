@@ -1,0 +1,41 @@
+buildscript {
+    repositories {
+        maven {
+            url 'https://plugins.gradle.org/m2/'
+        }
+    }
+}
+
+apply plugin: 'java'
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.debug = true
+    source {['src/main/java']}
+}
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // https://mvnrepository.com/artifact/org.telegram/telegrambots
+    implementation group: 'org.telegram', name: 'telegrambots', version: '5.7.1'
+    // https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple
+    implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
+}
+
+task Jar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': 'Server'
+    }
+    archiveBaseName = "telegram-bot"
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+}
