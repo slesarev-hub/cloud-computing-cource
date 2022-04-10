@@ -9,10 +9,10 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class Bot extends TelegramLongPollingBot {
-    TInvestApi investApi;
+    InvestApiWrapper investApi;
 
     Bot() {
-        investApi = new TInvestApi();
+        investApi = new InvestApiWrapper();
     }
 
     @Override
@@ -22,9 +22,8 @@ public class Bot extends TelegramLongPollingBot {
             String chatId = update.getMessage().getChatId().toString();
             message.setChatId(chatId);
             if (update.hasMessage() && update.getMessage().hasText()) {
-                String[] request = update.getMessage().getText().split("\\s+");
                 String response = null;
-                response = parseMessage(request);
+                response = parseMessage(update);
                 message.setText(response);
             } else {
                 message.setText("Server error");
@@ -35,21 +34,30 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private String parseMessage(String[] request) throws Exception {
+    private String parseMessage(Update update) throws Exception {
+        String[] request = update.getMessage().getText().split("\\s+");
         String command = request[0];
+        String chatId = update.getMessage().getChatId().toString();
         if (command.equals("/currencies")) {
-            return investApi.totalAmountCurrencies();
+            return investApi.totalAmountCurrencies(chatId);
         } else if (command.equals("/shares")) {
-            return investApi.totalAmountShares();
+            return investApi.totalAmountShares(chatId);
         } else if (command.equals("/figi")) {
-            return investApi.instrumentByFigi(request[1]);
-        } else if (command.equals("/newstop")) {
-            return investApi.newStopOrder(request[1], request[2]);
+            return investApi.instrumentByFigi(request[1], chatId);
+        } else if (command.equals("/newbuy")) {
+            return investApi.newBuyOrder(request[1], request[2], Integer.valueOf(request[3]), chatId);
+        } else if (command.equals("/newsell")) {
+            return investApi.newSellOrder(request[1], request[2], Integer.valueOf(request[3]), chatId);
         } else if (command.equals("/withdrawstop")) {
-            return investApi.withdrawStopOrder(request[1]);
-        }  else if (command.equals("/liststop")) {
-            return investApi.stopOrderList();
-        }else {
+            return investApi.withdrawStopOrder(request[1], chatId);
+        } else if (command.equals("/buylist")) {
+            return investApi.buyOrderList(chatId);
+        } else if (command.equals("/settoken")) {
+            String userName = update.getMessage().getChat().getUserName();
+            return investApi.setToken(chatId, userName, request[1]);
+        } else if (command.equals("/showtoken")) {
+            return investApi.showToken(chatId);
+        } else {
             throw new Exception("Parse error");
         }
     }
