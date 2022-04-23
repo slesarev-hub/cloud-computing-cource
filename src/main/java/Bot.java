@@ -3,8 +3,11 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -17,24 +20,42 @@ public class Bot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        SendMessage message = new SendMessage();
+        String chatId = update.getMessage().getChatId().toString();
         try {
-            String chatId = update.getMessage().getChatId().toString();
-            message.setChatId(chatId);
             if (update.hasMessage() && update.getMessage().hasText()) {
                 String response = null;
-                response = parseMessage(update);
-                message.setText(response);
-            } else {
-                message.setText("Server error");
+                response = parseMessageTextResponse(update);
+                if (response.equals("Photo")){
+                    SendPhoto msgPhoto = new SendPhoto();
+                    msgPhoto.setChatId(chatId);
+                    response = parseMessagePhotoResponse(update);
+                    var file = new InputFile(new File(response));
+                    msgPhoto.setPhoto(file);
+                    execute(msgPhoto);
+                } else {
+                    SendMessage msg = new SendMessage();
+                    msg.setChatId(chatId);
+                    msg.setText(response);
+                    execute(msg);
+                }
             }
-            execute(message);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private String parseMessage(Update update) throws Exception {
+    private String parseMessagePhotoResponse(Update update) throws Exception {
+        String[] request = update.getMessage().getText().split("\\s+");
+        String command = request[0];
+        String chatId = update.getMessage().getChatId().toString();
+        if (command.equals("/candle")) {
+            return investApi.plotByFigi(request[1], chatId);
+        } else {
+            throw new Exception("Parse error");
+        }
+    }
+
+    private String parseMessageTextResponse(Update update) throws Exception {
         String[] request = update.getMessage().getText().split("\\s+");
         String command = request[0];
         String chatId = update.getMessage().getChatId().toString();
@@ -57,8 +78,10 @@ public class Bot extends TelegramLongPollingBot {
             return investApi.setToken(chatId, userName, request[1]);
         } else if (command.equals("/showtoken")) {
             return investApi.showToken(chatId);
+        } else if (command.equals("/candle")) {
+            return "Photo";
         } else {
-            throw new Exception("Parse error");
+            return "No match";
         }
     }
 

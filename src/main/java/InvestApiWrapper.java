@@ -3,11 +3,21 @@ import org.json.simple.parser.JSONParser;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 
+import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.MessageFormat;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.junit.Assert.assertTrue;
 
 public class InvestApiWrapper {
     MongoDB mongoApi;
@@ -133,5 +143,80 @@ public class InvestApiWrapper {
 
     public String showToken(String chatId) {
         return mongoApi.getToken(chatId);
+    }
+
+    public String escapeSpecialCharacters(String data) {
+        String escapedData = data.replaceAll("\\R", " ");
+        if (data.contains(",") || data.contains("\"") || data.contains("'")) {
+            data = data.replace("\"", "\"\"");
+            escapedData = "\"" + data + "\"";
+        }
+        return escapedData;
+    }
+
+    public String convertToCSV(List<String> data) {
+        return data.stream()
+                .map(this::escapeSpecialCharacters)
+                .collect(Collectors.joining(","));
+    }
+
+    public void writeCSV(List<List<String>> dataLines) throws IOException {
+        var oldFile = new File("candle.csv");
+        oldFile.delete();
+
+        var oldPhoto = new File("plot.png");
+        oldPhoto.delete();
+
+        File csvOutputFile = new File("candle.csv");
+        try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
+            dataLines.stream()
+                    .map(this::convertToCSV)
+                    .forEach(pw::println);
+        }
+        assertTrue(csvOutputFile.exists());
+    }
+
+    public String plotByFigi(String figi, String chatId) {
+        var investApi = getInvestApi(chatId);
+        var accounts = investApi.getSandboxService().getAccountsSync();
+        var mainAccount = accounts.get(0).getId();
+        var candles = investApi.getMarketDataService().getCandlesSync(figi,
+                Instant.now().minus(7, ChronoUnit.DAYS),
+                Instant.now(),
+                CandleInterval.CANDLE_INTERVAL_DAY);
+        List<List<String>> dataLines = new ArrayList<>();
+        List<String> line = new ArrayList<>();
+        line.add("date");
+        line.add("open");
+        line.add("high");
+        line.add("low");
+        line.add("close");
+        dataLines.add(line);
+        for (var candle : candles) {
+            line = new ArrayList<>();
+            line.add(String.valueOf(candle.getTime().getSeconds()));
+            line.add(candle.getOpen().getUnits()+"."+candle.getOpen().getNano());
+            line.add(candle.getHigh().getUnits()+"."+candle.getHigh().getNano());
+            line.add(candle.getLow().getUnits()+"."+candle.getLow().getNano());
+            line.add(candle.getClose().getUnits()+"."+candle.getClose().getNano());
+            dataLines.add(line);
+        }
+        try {
+            writeCSV(dataLines);
+            var figInfo = investApi.getInstrumentsService().getInstrumentByFigiSync(figi);
+            return plotCsv(figInfo.getTicker());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private String plotCsv(String figi) {
+        try {
+            Runtime.getRuntime().exec("python3 plot.py " + figi).waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "plot.png";
     }
 }
