@@ -181,7 +181,7 @@ public class InvestApiWrapper {
         var accounts = investApi.getSandboxService().getAccountsSync();
         var mainAccount = accounts.get(0).getId();
         var candles = investApi.getMarketDataService().getCandlesSync(figi,
-                Instant.now().minus(7, ChronoUnit.DAYS),
+                Instant.now().minus(30, ChronoUnit.DAYS),
                 Instant.now(),
                 CandleInterval.CANDLE_INTERVAL_DAY);
         List<List<String>> dataLines = new ArrayList<>();
@@ -218,5 +218,21 @@ public class InvestApiWrapper {
             e.printStackTrace();
         }
         return "plot.png";
+    }
+
+    public String moexPlot(String chatId) {
+        return plotByFigi("BBG004730JJ5", chatId);
+    }
+
+    public String usdPlot(String chatId) {
+        return plotByFigi("BBG0013HGFT4", chatId);
+    }
+
+    public String spPlot(String chatId) {
+        var investApi = getInvestApi(chatId);
+        var a = investApi.getInstrumentsService().getAllBondsSync().stream().filter(e -> e.getTicker().equals("TSPX")).collect(Collectors.toList());;
+        var b = investApi.getInstrumentsService().getAllEtfsSync().stream().filter(e -> e.getTicker().equals("TSPX")).collect(Collectors.toList());
+        var c = investApi.getInstrumentsService().getAllSharesSync().stream().filter(e -> e.getTicker().equals("TSPX")).collect(Collectors.toList());
+        return plotByFigi("TCS00A102EQ8", chatId);
     }
 }

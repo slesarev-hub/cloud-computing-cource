@@ -25,6 +25,6 @@ plt.bar(down.index,down.high-down.open,width2,bottom=down.open,color=col2)
 plt.bar(down.index,down.low-down.close,width2,bottom=down.close,color=col2)
 
 plt.title(sys.argv[1])
-plt.xticks([i for i in range(len(prices))],[datetime.fromtimestamp(i).strftime("%B %d") for i in prices.date])
+plt.xticks([i for i in range(len(prices))],[datetime.fromtimestamp(i).strftime("%d") for i in prices.date])
 
 plt.savefig('plot.png')
