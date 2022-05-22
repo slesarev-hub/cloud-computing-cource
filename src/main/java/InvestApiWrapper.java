@@ -3,10 +3,9 @@ import org.json.simple.parser.JSONParser;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -63,6 +62,7 @@ public class InvestApiWrapper {
         var investApi = getInvestApi(chatId);
         var accounts = investApi.getSandboxService().getAccountsSync();
         var mainAccount = accounts.get(0).getId();
+        mongoApi.newBuyOrder(figi, limitPrice, lotCount, chatId);
         var response = investApi.getSandboxService().postOrderSync(figi,
                 lotCount,
                 stopPrice,
@@ -78,6 +78,7 @@ public class InvestApiWrapper {
         var investApi = getInvestApi(chatId);
         var accounts = investApi.getSandboxService().getAccountsSync();
         var mainAccount = accounts.get(0).getId();
+        mongoApi.newSellOrder(figi, limitPrice, lotCount, chatId);
         var response = investApi.getSandboxService().postOrderSync(figi,
                 lotCount,
                 stopPrice,
@@ -230,9 +231,33 @@ public class InvestApiWrapper {
 
     public String spPlot(String chatId) {
         var investApi = getInvestApi(chatId);
-        var a = investApi.getInstrumentsService().getAllBondsSync().stream().filter(e -> e.getTicker().equals("TSPX")).collect(Collectors.toList());;
-        var b = investApi.getInstrumentsService().getAllEtfsSync().stream().filter(e -> e.getTicker().equals("TSPX")).collect(Collectors.toList());
-        var c = investApi.getInstrumentsService().getAllSharesSync().stream().filter(e -> e.getTicker().equals("TSPX")).collect(Collectors.toList());
         return plotByFigi("TCS00A102EQ8", chatId);
+    }
+
+    public String history(String chatId) {
+        var collection = mongoApi.getHistory(chatId);
+        var cursor = collection.find().iterator();
+        String path = "history.json";
+        try {
+            Files.deleteIfExists(Paths.get(path));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        PrintWriter out = null;
+        try {
+            out = new PrintWriter(new BufferedWriter(new FileWriter(path, true))
+            );
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        while(cursor.hasNext()){
+            out.println(cursor.next().toJson());
+        }
+
+        out.flush();            // flush to ensure writes
+        out.close();
+        return path;
     }
 }

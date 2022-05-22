@@ -39,6 +39,7 @@ public class MongoDB {
                 .append("userName", userName)
                 .append("token", token);
         if (Objects.isNull(doc)) {
+            database.getCollection(userName);
             collection.insertOne(newDoc);
             return "New user created";
         } else {
@@ -58,5 +59,37 @@ public class MongoDB {
         } else {
             return doc.getString("token");
         }
+    }
+
+    public void newBuyOrder(String figi, String limitPrice, Integer lotCount, String chatId) {
+        MongoClientURI connectionString = new MongoClientURI("mongodb://" + this.host + ":" + this.port);
+        MongoClient mongoClient = new MongoClient(connectionString);
+        MongoDatabase database = mongoClient.getDatabase("users");
+        MongoCollection<Document> collection = database.getCollection(chatId + "orders");
+        Document newDoc = new Document("orderType", "buy")
+                .append("figi", figi)
+                .append("limitPrice", limitPrice)
+                .append("lotCount", lotCount);
+        collection.insertOne(newDoc);
+    }
+
+    public void newSellOrder(String figi, String limitPrice, Integer lotCount, String chatId) {
+        MongoClientURI connectionString = new MongoClientURI("mongodb://" + this.host + ":" + this.port);
+        MongoClient mongoClient = new MongoClient(connectionString);
+        MongoDatabase database = mongoClient.getDatabase("users");
+        MongoCollection<Document> collection = database.getCollection(chatId + "orders");
+        Document newDoc = new Document("orderType", "sell")
+                .append("figi", figi)
+                .append("limitPrice", limitPrice)
+                .append("lotCount", lotCount);
+        collection.insertOne(newDoc);
+    }
+
+    public MongoCollection<Document> getHistory(String chatId) {
+        MongoClientURI connectionString = new MongoClientURI("mongodb://" + this.host + ":" + this.port);
+        MongoClient mongoClient = new MongoClient(connectionString);
+        MongoDatabase database = mongoClient.getDatabase("users");
+        MongoCollection<Document> collection = database.getCollection(chatId + "orders");
+        return collection;
     }
 }

@@ -2,6 +2,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -36,6 +37,13 @@ public class Bot extends TelegramLongPollingBot {
                     var file = new InputFile(new File(response));
                     msgPhoto.setPhoto(file);
                     execute(msgPhoto);
+                } else if (response.equals("Doc")) {
+                    var msgDoc = new SendDocument();
+                    msgDoc.setChatId(chatId);
+                    response = parseMessageDocResponse(update);
+                    var file = new InputFile(new File(response));
+                    msgDoc.setDocument(file);
+                    execute(msgDoc);
                 } else if (response.equals("Keyboard")) {
                     SendMessage message = new SendMessage();
                     message.setChatId(chatId);
@@ -64,6 +72,13 @@ public class Bot extends TelegramLongPollingBot {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private String parseMessageDocResponse(Update update) {
+        String[] request = update.getMessage().getText().split("\\s+");
+        String command = request[0];
+        String chatId = update.getMessage().getChatId().toString();
+        return investApi.history(chatId);
     }
 
     private String parseMessagePhotoResponse(Update update) throws Exception {
@@ -110,6 +125,8 @@ public class Bot extends TelegramLongPollingBot {
             return "Photo";
         } else if (command.equals("/switch")) {
             return "Keyboard";
+        } else if (command.equals("/history")) {
+            return "Doc";
         } else {
             return "No match";
         }
